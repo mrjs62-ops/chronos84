@@ -1,6 +1,6 @@
 // Guarda o app no celular para abrir sem internet.
 // Responde do cache na hora e atualiza em segundo plano (a versão nova aparece na próxima abertura).
-const CACHE = 'chronos84-v2';
+const CACHE = 'chronos84-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

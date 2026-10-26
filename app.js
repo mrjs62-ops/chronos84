@@ -69,7 +69,8 @@ function save() {
   catch (e) { toast('Não consegui salvar: o armazenamento do celular está cheio'); }
 }
 
-const cur = { tab: 'hoje', day: todayKey(), seg: 'sonho', q: '', lastToday: todayKey() };
+const cur = { tab: 'hoje', day: todayKey(), seg: 'sonho', q: '', lastToday: todayKey(), slide: 'pratica' };
+try { const s = localStorage.getItem('chronos84.slide'); if (['sonho', 'pratica', 'dia'].includes(s)) cur.slide = s; } catch (e) { /* ok */ }
 
 /* ================= arquivos (IndexedDB) ================= */
 const idb = (() => {
@@ -306,11 +307,50 @@ function vHoje() {
   </div>
   ${mod('sp', 'ESPIRITUAL')}
   ${mod('st', 'ESTUDOS')}
-  <div class="prompts">
-    ${!hasDream ? `<button class="prompt m" data-act="new-entry" data-type="sonho" data-k="${k}">Sonhou com algo? <b>Registrar</b></button>` : ''}
-    <button class="prompt v" data-act="new-entry" data-type="pratica" data-k="${k}">${pracs.length ? `${pracs.length} ${plural(pracs.length, 'prática', 'práticas')} no diário mágico` : 'Fez uma prática?'} <b>${pracs.length ? '+ Outra' : 'Diário mágico'}</b></button>
-    ${!hasDay ? `<button class="prompt c" data-act="new-entry" data-type="dia" data-k="${k}">Como foi o dia? <b>Escrever</b></button>` : ''}
+  ${diarySwiper(k, pracs.length, hasDream, hasDay)}`;
+}
+
+/* Cartão deslizante: arraste para trocar entre Sonho, Mágico e Dia a dia */
+const SLIDES = ['sonho', 'pratica', 'dia'];
+function diarySwiper(k, nPrac, hasDream, hasDay) {
+  const nOf = t => S.entries.filter(e => e.type === t && e.date === k).length;
+  const slide = (type, cls, icon, eyebrow, ask, done, action) => {
+    const n = nOf(type);
+    return `<button class="slide ${cls}" data-act="new-entry" data-type="${type}" data-k="${k}" aria-label="${eyebrow}: ${n ? done(n) : ask}">
+      <span class="sl-ico">${icon}</span>
+      <span class="sl-txt"><small>${eyebrow}</small><span>${n ? done(n) : ask}</span></span>
+      <b>${n ? '+ OUTRO' : action}</b>
+    </button>`;
+  };
+  const i = SLIDES.indexOf(cur.slide);
+  return `<div class="swiper">
+    <div class="sw-track" id="swTrack">
+      ${slide('sonho', 'm', ICON.moon, 'SONHOS', 'Sonhou com algo?', n => `${n} ${plural(n, 'sonho')} registrado${n > 1 ? 's' : ''}`, 'REGISTRAR')}
+      ${slide('pratica', 'v', ICON.magic, 'DIÁRIO MÁGICO', 'Fez uma prática?', n => `${n} ${plural(n, 'prática', 'práticas')} registrada${n > 1 ? 's' : ''}`, 'REGISTRAR')}
+      ${slide('dia', 'c', ICON.pen, 'DIA A DIA', 'Como foi o dia?', n => `${n} ${plural(n, 'registro')} do dia`, 'ESCREVER')}
+    </div>
+    <div class="sw-dots" role="tablist" aria-label="Escolher diário">
+      ${SLIDES.map((t, j) => `<button class="dot ${j === i ? 'on' : ''} d-${t}" data-act="slide" data-i="${j}" role="tab" aria-selected="${j === i}" aria-label="${TYPE[t].plural}"></button>`).join('')}
+    </div>
   </div>`;
+}
+function mountSwiper() {
+  const tr = $('#swTrack'); if (!tr) return;
+  const w = () => tr.clientWidth || 1;
+  tr.scrollLeft = SLIDES.indexOf(cur.slide) * w();
+  let raf;
+  tr.addEventListener('scroll', () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const i = Math.max(0, Math.min(SLIDES.length - 1, Math.round(tr.scrollLeft / w())));
+      if (SLIDES[i] !== cur.slide) {
+        cur.slide = SLIDES[i];
+        try { localStorage.setItem('chronos84.slide', cur.slide); } catch (e) { /* ok */ }
+        document.querySelectorAll('.sw-dots .dot').forEach((d, j) => { d.classList.toggle('on', j === i); d.setAttribute('aria-selected', j === i); });
+        if (navigator.vibrate) navigator.vibrate(6);
+      }
+    });
+  }, { passive: true });
 }
 
 function badgeOf(e) {
@@ -454,6 +494,7 @@ function vLivros() {
 function render() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === cur.tab));
   $('#view').innerHTML = ({ hoje: vHoje, diario: vDiario, memoria: vMemoria, livros: vLivros })[cur.tab]();
+  if (cur.tab === 'hoje') mountSwiper();
 }
 
 /* ================= folha inferior ================= */
@@ -839,6 +880,7 @@ document.addEventListener('click', ev => {
   const id = el.dataset.id;
   switch (el.dataset.act) {
     case 'quick': sheetQuick(); break;
+    case 'slide': { const tr = $('#swTrack'); if (tr) tr.scrollTo({ left: +el.dataset.i * tr.clientWidth, behavior: 'smooth' }); break; }
     case 'day': if (el.dataset.k <= todayKey()) { cur.day = el.dataset.k; render(); } break;
     case 'toggle': {
       const a = S.log[cur.day] || (S.log[cur.day] = []);

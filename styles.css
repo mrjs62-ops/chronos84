@@ -265,6 +265,27 @@ label.btn{font-family:var(--f-display);font-size:12px;letter-spacing:.12em;color
 .qk.m{--c:var(--magenta)} .qk.c{--c:var(--cyan)} .qk.y{--c:var(--sun)} .qk.v{--c:var(--violet)}
 .qk.wide{grid-column:1/-1}
 
+/* ---------- cartão deslizante dos diários ---------- */
+.swiper{display:grid;gap:8px}
+.sw-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:auto;overscroll-behavior-x:contain;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;border:1px dashed var(--line)}
+.sw-track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
+  min-height:70px;padding:12px 14px;border:0;text-align:left;cursor:pointer;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--c) 18%,transparent),var(--card) 55%);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent)}
+.slide.m{--c:var(--magenta)} .slide.v{--c:var(--violet)} .slide.c{--c:var(--cyan)}
+.sl-ico svg{width:26px;height:26px;stroke:var(--c);fill:none;stroke-width:1.6;filter:drop-shadow(0 0 5px var(--c));display:block}
+.sl-txt{display:grid;min-width:0;line-height:1.25}
+.sl-txt small{font-family:var(--f-display);font-size:10px;letter-spacing:.16em;color:var(--c)}
+.sl-txt span{font-size:15px;color:var(--ink)}
+.slide b{font-family:var(--f-data);font-size:18px;font-weight:400;letter-spacing:.06em;color:var(--c);white-space:nowrap;text-shadow:0 0 8px var(--c)}
+.sw-dots{display:flex;justify-content:center;gap:10px}
+.sw-dots .dot{width:22px;height:5px;border:0;padding:0;background:var(--line);cursor:pointer;transition:background .2s,width .2s}
+.sw-dots .dot.on{width:34px}
+.sw-dots .dot.on.d-sonho{background:var(--magenta);box-shadow:0 0 8px var(--magenta)}
+.sw-dots .dot.on.d-pratica{background:var(--violet);box-shadow:0 0 8px var(--violet)}
+.sw-dots .dot.on.d-dia{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+
 /* ---------- diário mágico ---------- */
 .seg.three{grid-template-columns:repeat(3,1fr)}
 .seg button.mg.on{background:linear-gradient(90deg,#9d4dff44,#05d9e822);box-shadow:inset 0 -2px 0 var(--violet)}
