@@ -24,11 +24,21 @@ const agoTxt = n => n <= 0 ? 'hoje' : n === 1 ? 'ontem' : n < 30 ? `há ${n} dia
 const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 const excerpt = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 const byDateDesc = (a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''));
-const tagClass = t => 'tg' + ([...norm(t)].reduce((h, c) => h + c.charCodeAt(0), 0) % 4);
+const fullText = e => [e.title, e.text, e.practice, e.intent, e.result].filter(Boolean).join(' ');
+const TYPE = {
+  sonho: { label: 'sonho', plural: 'sonhos', badge: 'SONHO' },
+  pratica: { label: 'prática', plural: 'práticas', badge: 'PRÁTICA' },
+  dia: { label: 'dia', plural: 'dias', badge: 'DIA A DIA' },
+};
+const PRACTICES = ['Meditação', 'Oração', 'Ritual', 'Visualização', 'Respiração', 'Leitura sagrada', 'Gratidão', 'Jejum'];
+const practiceList = () => [...new Set([...PRACTICES, ...S.entries.filter(e => e.type === 'pratica' && e.practice).map(e => e.practice)])];
+const tagClass = t =>'tg' + ([...norm(t)].reduce((h, c) => h + c.charCodeAt(0), 0) % 4);
 
 const ICON = {
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
   mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+  magic: '<svg viewBox="0 0 24 24"><path d="M4 20L15 9M14 4l1 2.5L17.5 7 15 8l-1 2.5L13 8l-2.5-1L13 6z M19 12l.6 1.4L21 14l-1.4.6L19 16l-.6-1.4L17 14l1.4-.6z"/></svg>',
+  timer: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg>',
   pen: '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
   star: '<svg viewBox="0 0 24 24"><path d="M12 3l2.5 6 6.5.5-5 4.2 1.6 6.3L12 16.6 6.4 20l1.6-6.3-5-4.2 6.5-.5z"/></svg>',
@@ -101,7 +111,8 @@ function streak() {
 const STOP = new Set(('a o e de da do das dos em no na nos nas um uma uns umas que com por para pra pro meu minha meus minhas ' +
   'eu voce se sobre os as ao aos sonho sonhos sonhei sonhar tem tens comum quando onde como qual quais foi era ser estar estou ' +
   'isso esse essa este esta mais menos muito muita ja nao sim ou mas ate dia dias me mim lembra lembro quero ver mostra mostre ' +
-  'tive teve fiz fez sao sobre aquele aquela nisso nesse nessa porque entre todos todas cada algum alguma').split(' '));
+  'tive teve fiz fez sao sobre aquele aquela nisso nesse nessa porque entre todos todas cada algum alguma ' +
+  'pratica praticas diario magico magicos minhas').split(' '));
 const stem = t => t.length > 4 ? t.replace(/(oes|aes|ais|eis|ns|s)$/, '').slice(0, Math.max(4, t.length - 2)) : t;
 const tokens = s => norm(s).split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.has(w));
 
@@ -109,7 +120,7 @@ function scoreEntries(ts, onlyType) {
   const stems = ts.map(stem), out = [];
   for (const e of S.entries) {
     if (onlyType && e.type !== onlyType) continue;
-    const tags = e.tags.map(norm), body = norm(e.title + ' ' + e.text);
+    const tags = e.tags.map(norm), body = norm(fullText(e));
     let sc = 0;
     for (const s of stems) {
       if (tags.some(g => g.startsWith(s))) sc += 3;
@@ -123,17 +134,26 @@ function scoreEntries(ts, onlyType) {
 
 function related(e) {
   const tags = new Set(e.tags.map(norm));
-  const words = new Set(tokens(e.title + ' ' + e.text).map(stem).filter(w => w.length > 3));
+  const words = new Set(tokens(fullText(e)).map(stem).filter(w => w.length > 3));
   const out = [];
   for (const x of S.entries) {
     if (x.id === e.id) continue;
     let sc = 0;
     x.tags.forEach(t => { if (tags.has(norm(t))) sc += 3; });
-    const xw = new Set(tokens(x.title + ' ' + x.text).map(stem));
+    const xw = new Set(tokens(fullText(x)).map(stem));
     let shared = 0; words.forEach(w => { if (xw.has(w)) shared++; });
     sc += Math.min(shared, 4);
+    // mesma prática (ex.: duas meditações)
+    if (e.type === 'pratica' && x.type === 'pratica' && e.practice && e.practice === x.practice) sc += 2;
+    // práticas do mesmo dia se ligam ao sonho e ao dia
+    if (x.date === e.date && x.type !== e.type) sc += 1;
+    // prática e o sonho daquela noite (mesmo dia ou manhã seguinte)
+    if ((e.type === 'pratica' && x.type === 'sonho') || (e.type === 'sonho' && x.type === 'pratica')) {
+      const p = e.type === 'pratica' ? e : x, s = e.type === 'sonho' ? e : x;
+      if (s.date === p.date || s.date === addDays(p.date, 1)) sc += 1;
+    }
     // véspera: o dia anterior a um sonho (ou o sonho da manhã seguinte)
-    if (x.type !== e.type) {
+    if (x.type !== e.type && x.type !== 'pratica' && e.type !== 'pratica') {
       const dream = e.type === 'sonho' ? e : x, day = e.type === 'sonho' ? x : e;
       if (day.date === dream.date || day.date === addDays(dream.date, -1)) sc += 2;
     }
@@ -153,12 +173,12 @@ const em = t => `<em>${esc(t)}</em>`;
 
 function answer(q) {
   const nq = norm(q);
-  const onlyType = /sonh/.test(nq) ? 'sonho' : /\b(dia a dia|meu dia|meus dias|rotina)\b/.test(nq) ? 'dia' : null;
+  const onlyType = /sonh/.test(nq) ? 'sonho' : /pratica|magic|ritual/.test(nq) ? 'pratica' : /\b(dia a dia|meu dia|meus dias|rotina)\b/.test(nq) ? 'dia' : null;
   const ts = tokens(q);
   if (!ts.length) {
     const list = S.entries.filter(e => !onlyType || e.type === onlyType).sort(byDateDesc).slice(0, 8);
     if (!list.length) return term(q, 'Ainda não há registros para lembrar. Escreva no Diário e eu começo a ligar os pontos.');
-    return term(q, `Seus ${list.length} registros mais recentes${onlyType === 'sonho' ? ' de sonhos' : ''}:`) + linksHtml(list);
+    return term(q, `Seus ${list.length} registros mais recentes${onlyType ? ' de ' + TYPE[onlyType].plural : ''}:`) + linksHtml(list);
   }
   const res = scoreEntries(ts, onlyType);
   const stems = ts.map(stem);
@@ -166,12 +186,15 @@ function answer(q) {
   if (!res.length && !books.length) return term(q, `Não encontrei nada sobre ${ts.map(em).join(', ')} ainda. Tente outra palavra ou um marcador que você usa.`);
 
   const es = res.map(r => r.e);
-  const dreams = es.filter(e => e.type === 'sonho'), days = es.filter(e => e.type === 'dia');
+  const dreams = es.filter(e => e.type === 'sonho'), days = es.filter(e => e.type === 'dia'), pracs = es.filter(e => e.type === 'pratica');
   const dates = [...new Set(es.map(e => e.date))].sort();
   const L = [];
   if (es.length) {
-    const split = dreams.length && days.length ? ` (${dreams.length} ${plural(dreams.length, 'sonho')}, ${days.length} do dia)` : dreams.length ? ` de ${plural(dreams.length, 'sonho')}` : ' do dia';
-    L.push(`Encontrei <em>${es.length} ${plural(es.length, 'registro')}</em>${split}.`);
+    const parts = [];
+    if (dreams.length) parts.push(`${dreams.length} ${plural(dreams.length, 'sonho')}`);
+    if (pracs.length) parts.push(`${pracs.length} ${plural(pracs.length, 'prática', 'práticas')}`);
+    if (days.length) parts.push(`${days.length} do dia`);
+    L.push(`Encontrei <em>${es.length} ${plural(es.length, 'registro')}</em> (${parts.join(', ')}).`);
     const last = dates[dates.length - 1];
     L.push(dates.length > 1 ? `O primeiro em ${em(fmtDate(dates[0]))}, o último ${agoTxt(daysBetween(last, todayKey()))}.` : `Foi ${agoTxt(daysBetween(last, todayKey()))}.`);
 
@@ -196,6 +219,14 @@ function answer(q) {
       const diff = Math.round((avg(dates.map(dayPct)) - avg(logged.map(dayPct))) * 100);
       if (Math.abs(diff) >= 15) L.push(`Nesses dias seus hábitos ficaram <em>${Math.abs(diff)} pontos ${diff > 0 ? 'acima' : 'abaixo'}</em> da sua média.`);
     }
+    if (pracs.length) {
+      const mins = pracs.reduce((s, e) => s + (e.duration || 0), 0);
+      const deep = pracs.filter(e => e.score && e.score.profundidade).map(e => e.score.profundidade);
+      if (mins) L.push(`Somando <em>${mins} min</em> de prática.`);
+      if (deep.length >= 2) L.push(`Profundidade média: <em>${avg(deep).toFixed(1)}</em>.`);
+      const sameDayDreams = S.entries.filter(x => x.type === 'sonho' && pracs.some(p => x.date === addDays(p.date, 1) || x.date === p.date));
+      if (sameDayDreams.length) L.push(`Depois dessas práticas você registrou <em>${sameDayDreams.length} ${plural(sameDayDreams.length, 'sonho')}</em> (no mesmo dia ou na manhã seguinte).`);
+    }
     const hum = days.filter(e => e.score && e.score.humor).map(e => e.score.humor);
     if (hum.length >= 2) {
       const all = S.entries.filter(e => e.type === 'dia' && e.score && e.score.humor).map(e => e.score.humor);
@@ -209,13 +240,16 @@ function answer(q) {
 }
 
 /* ================= componentes ================= */
-const linkHtml = e => `<button class="link" data-act="open-entry" data-id="${e.id}"><span class="d">${fmtDate(e.date)}</span><span class="lt">${esc(e.title || excerpt(e.text, 50) || 'Sem título')}</span><span class="k">${e.type === 'sonho' ? 'sonho' : 'dia'}</span></button>`;
+const entryTitle = e => e.title || (e.type === 'pratica' ? (e.practice || 'Prática') + (e.duration ? ` · ${e.duration} min` : '') : excerpt(e.text, 50)) || 'Sem título';
+const linkHtml = e => `<button class="link ${e.type === 'pratica' ? 'pr' : ''}" data-act="open-entry" data-id="${e.id}"><span class="d">${fmtDate(e.date)}</span><span class="lt">${esc(entryTitle(e))}</span><span class="k">${TYPE[e.type].label}</span></button>`;
 const linksHtml = list => `<div class="links">${list.map(linkHtml).join('')}</div>`;
 const tagsHtml = (tags, act) => tags && tags.length ? `<div class="tags">${tags.map(t => act ? `<button class="${tagClass(t)}" data-act="ask" data-q="${esc(t)}">${esc(t)}</button>` : `<span class="${tagClass(t)}">${esc(t)}</span>`).join('')}</div>` : '';
 const meter = (label, v, c) => `<div class="meter" style="--c:var(--${c})"><div class="lbl"><span>${label}</span><span>${v}/10</span></div><div class="bars">${Array.from({ length: 10 }, (_, i) => `<i class="${i < v ? 'on' : ''}"></i>`).join('')}</div></div>`;
 const metersHtml = e => e.type === 'sonho'
   ? (e.score && e.score.nitidez ? meter('NITIDEZ', e.score.nitidez, 'violet') : '')
-  : (e.score ? (e.score.humor ? meter('HUMOR', e.score.humor, 'sun') : '') + (e.score.energia ? meter('ENERGIA', e.score.energia, 'cyan') : '') : '');
+  : e.type === 'pratica'
+  ? (e.score ? (e.score.profundidade ? meter('PROFUNDIDADE', e.score.profundidade, 'violet') : '') + (e.score.paz ? meter('PAZ DEPOIS', e.score.paz, 'cyan') : '') : '')
+  : (e.score ?(e.score.humor ? meter('HUMOR', e.score.humor, 'sun') : '') + (e.score.energia ? meter('ENERGIA', e.score.energia, 'cyan') : '') : '');
 const statusLabel = s => ({ quero: 'quero ler', lendo: 'lendo', lido: 'lido' }[s] || s);
 const GRADS = [['#ff2a6d', '#5b0f6b'], ['#05d9e8', '#1b2a8f'], ['#ffd319', '#ff2a6d'], ['#9d4dff', '#100830'], ['#39ff9e', '#0b4a5a'], ['#ff8b3d', '#3b0f5c']];
 const coverHtml = (b, cls = '') => {
@@ -243,6 +277,7 @@ function vHoje() {
   };
   const hasDream = S.entries.some(e => e.type === 'sonho' && e.date === k);
   const hasDay = S.entries.some(e => e.type === 'dia' && e.date === k);
+  const pracs = S.entries.filter(e => e.type === 'pratica' && e.date === k);
   return `
   <header class="top">
     <div class="daynav">
@@ -273,33 +308,64 @@ function vHoje() {
   ${mod('st', 'ESTUDOS')}
   <div class="prompts">
     ${!hasDream ? `<button class="prompt m" data-act="new-entry" data-type="sonho" data-k="${k}">Sonhou com algo? <b>Registrar</b></button>` : ''}
+    <button class="prompt v" data-act="new-entry" data-type="pratica" data-k="${k}">${pracs.length ? `${pracs.length} ${plural(pracs.length, 'prática', 'práticas')} no diário mágico` : 'Fez uma prática?'} <b>${pracs.length ? '+ Outra' : 'Diário mágico'}</b></button>
     ${!hasDay ? `<button class="prompt c" data-act="new-entry" data-type="dia" data-k="${k}">Como foi o dia? <b>Escrever</b></button>` : ''}
   </div>`;
 }
 
+function badgeOf(e) {
+  if (e.type === 'sonho') return e.lucid ? 'SONHO LÚCIDO' : 'SONHO';
+  if (e.type === 'pratica') return esc((e.practice || 'PRÁTICA').toUpperCase()) + (e.duration ? ` · ${e.duration} MIN` : '');
+  return DIA[parseKey(e.date).getDay()];
+}
 function vDiario() {
-  const isS = cur.seg === 'sonho';
-  const list = S.entries.filter(e => e.type === cur.seg).sort(byDateDesc);
+  const seg = cur.seg;
+  const list = S.entries.filter(e => e.type === seg).sort(byDateDesc);
   let html = '', lastM = '';
   for (const e of list) {
     const d = parseKey(e.date), m = MES_LONGO[d.getMonth()] + ' ' + d.getFullYear();
     if (m !== lastM) { html += `<div class="month">${m}</div>`; lastM = m; }
-    html += `<button class="entry" data-act="open-entry" data-id="${e.id}">
-      <div class="when"><span>${fmtDate(e.date)}${e.time ? ' · ' + e.time : ''}</span><b>◆ ${e.type === 'sonho' ? (e.lucid ? 'SONHO LÚCIDO' : 'SONHO') : DIA[d.getDay()]}</b></div>
+    const body = e.type === 'pratica' ? (e.text || e.result || e.intent) : e.text;
+    html += `<button class="entry ${e.type === 'pratica' ? 'pr' : ''}" data-act="open-entry" data-id="${e.id}">
+      <div class="when"><span>${fmtDate(e.date)}${e.time ? ' · ' + e.time : ''}</span><b>◆ ${badgeOf(e)}</b></div>
       ${e.title ? `<h4>${esc(e.title)}</h4>` : ''}
-      ${e.text ? `<p>${esc(e.text)}</p>` : ''}
+      ${e.type === 'pratica' && e.intent ? `<div class="intent">INTENÇÃO › ${esc(e.intent)}</div>` : ''}
+      ${body ? `<p>${esc(body)}</p>` : ''}
       ${tagsHtml(e.tags)}
       ${metersHtml(e)}
     </button>`;
   }
+  const SEGS = [['sonho', 'SONHOS'], ['pratica', 'MÁGICO'], ['dia', 'DIA A DIA']];
+  const REC = { sonho: ['', 'REGISTRAR SONHO'], pratica: ['v', 'REGISTRAR PRÁTICA'], dia: ['c', 'ESCREVER SOBRE HOJE'] };
+  const EMPTY = {
+    sonho: ['Nenhum sonho registrado.', 'Anote logo ao acordar, antes que o sonho se apague. Dá para ditar por voz.'],
+    pratica: ['O diário mágico está vazio.', 'Registre cada prática: meditação, oração, ritual. Anote a intenção, o que veio à mente durante e como foi. Use o cronômetro para medir o tempo.'],
+    dia: ['Nenhum dia registrado.', 'Escreva o que aconteceu, como você se sentiu e marque com palavras-chave.'],
+  };
   return `
-  <header class="top"><p class="h-eyebrow">${S.entries.length} ${plural(S.entries.length, 'registro')}</p><h1 class="h-title">Diário</h1></header>
-  <div class="seg" role="tablist">
-    <button class="${isS ? 'on' : ''}" data-act="seg" data-seg="sonho" role="tab" aria-selected="${isS}">SONHOS</button>
-    <button class="${!isS ? 'on' : ''}" data-act="seg" data-seg="dia" role="tab" aria-selected="${!isS}">DIA A DIA</button>
+  <header class="top"><p class="h-eyebrow">${S.entries.length} ${plural(S.entries.length, 'registro')}</p><h1 class="h-title">${seg === 'pratica' ? 'Diário mágico' : 'Diário'}</h1></header>
+  <div class="seg three" role="tablist">
+    ${SEGS.map(([v, l]) => `<button class="${seg === v ? 'on' : ''} ${v === 'pratica' ? 'mg' : ''}" data-act="seg" data-seg="${v}" role="tab" aria-selected="${seg === v}">${l}</button>`).join('')}
   </div>
-  <button class="rec ${isS ? '' : 'c'}" data-act="new-entry" data-type="${cur.seg}"><span class="dot"></span>${isS ? 'REGISTRAR SONHO' : 'ESCREVER SOBRE HOJE'}<span class="wave"></span></button>
-  ${list.length ? html : `<div class="empty"><b>${isS ? 'Nenhum sonho registrado.' : 'Nenhum dia registrado.'}</b>${isS ? 'Anote logo ao acordar, antes que o sonho se apague. Dá para ditar por voz.' : 'Escreva o que aconteceu, como você se sentiu e marque com palavras-chave.'}</div>`}`;
+  <button class="rec ${REC[seg][0]}" data-act="new-entry" data-type="${seg}"><span class="dot"></span>${REC[seg][1]}<span class="wave"></span></button>
+  ${seg === 'pratica' ? practiceSummary() : ''}
+  ${list.length ? html : `<div class="empty"><b>${EMPTY[seg][0]}</b>${EMPTY[seg][1]}</div>`}`;
+}
+
+// resumo do mês no diário mágico
+function practiceSummary() {
+  const ym = todayKey().slice(0, 7);
+  const month = S.entries.filter(e => e.type === 'pratica' && e.date.startsWith(ym));
+  if (!month.length) return '';
+  const by = {};
+  month.forEach(e => { const p = e.practice || 'Outra'; by[p] = by[p] || { n: 0, m: 0 }; by[p].n++; by[p].m += e.duration || 0; });
+  const mins = month.reduce((s, e) => s + (e.duration || 0), 0);
+  const days = new Set(month.map(e => e.date)).size;
+  return `<div class="stats three">
+    <div class="stat" style="--c:var(--violet)"><b>${month.length}</b><span>práticas</span></div>
+    <div class="stat" style="--c:var(--cyan)"><b>${mins}</b><span>minutos</span></div>
+    <div class="stat" style="--c:var(--sun)"><b>${days}</b><span>${plural(days, 'dia')}</span></div></div>
+  <div class="tags">${Object.entries(by).sort((a, b) => b[1].n - a[1].n).map(([p, v]) => `<span class="${tagClass(p)}">${esc(p)} ×${v.n}${v.m ? ' · ' + v.m + 'min' : ''}</span>`).join('')}</div>`;
 }
 
 function vMemoria() {
@@ -313,13 +379,12 @@ function vMemoria() {
 }
 
 function overview() {
-  const nS = S.entries.filter(e => e.type === 'sonho').length, nD = S.entries.length - nS;
-  const lidos = S.books.filter(b => b.status === 'lido').length;
+  const cnt = t => S.entries.filter(e => e.type === t).length;
   const stats = `<div class="stats">
-    <div class="stat" style="--c:var(--magenta)"><b>${nS}</b><span>sonhos</span></div>
-    <div class="stat" style="--c:var(--cyan)"><b>${nD}</b><span>dias</span></div>
-    <div class="stat" style="--c:var(--sun)"><b>${streak()}</b><span>sequência</span></div>
-    <div class="stat" style="--c:var(--violet)"><b>${lidos}</b><span>lidos</span></div></div>`;
+    <div class="stat" style="--c:var(--magenta)"><b>${cnt('sonho')}</b><span>sonhos</span></div>
+    <div class="stat" style="--c:var(--violet)"><b>${cnt('pratica')}</b><span>práticas</span></div>
+    <div class="stat" style="--c:var(--cyan)"><b>${cnt('dia')}</b><span>dias</span></div>
+    <div class="stat" style="--c:var(--sun)"><b>${streak()}</b><span>sequência</span></div></div>`;
   if (!S.entries.length) return stats + `<div class="empty"><b>A memória começa vazia.</b>Cada sonho e cada dia que você registrar entra aqui. Depois é só perguntar coisas como "quando sonhei com água?" ou "trabalho".</div>`;
 
   const t = todayKey(), parts = [stats];
@@ -330,6 +395,16 @@ function overview() {
 
   const sym = tagCounts('sonho').slice(0, 10), th = tagCounts('dia').slice(0, 10);
   if (sym.length) parts.push(`<section class="panel" style="--c:var(--magenta)"><h3>SÍMBOLOS DOS SEUS SONHOS</h3><div class="tags">${sym.map(([g, c]) => `<button class="${tagClass(g)}" data-act="ask" data-q="${esc(g)}">${esc(g)} ×${c}</button>`).join('')}</div></section>`);
+  const pr = S.entries.filter(e => e.type === 'pratica');
+  if (pr.length >= 2) {
+    const by = {};
+    pr.forEach(e => { const p = e.practice || 'Outra'; (by[p] = by[p] || []).push(e); });
+    const rows = Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([p, es]) => {
+      const d = es.filter(e => e.score && e.score.profundidade).map(e => e.score.profundidade);
+      return `<button class="link pr" data-act="ask" data-q="${esc(p)}"><span class="d">${es.length}×</span><span class="lt">${esc(p)}</span><span class="k">${d.length ? 'prof. ' + avg(d).toFixed(1) : ''}</span></button>`;
+    });
+    parts.push(`<section class="panel" style="--c:var(--violet)"><h3>DIÁRIO MÁGICO</h3><div class="links">${rows.join('')}</div></section>`);
+  }
   if (th.length) parts.push(`<section class="panel" style="--c:var(--cyan)"><h3>TEMAS DO SEU DIA A DIA</h3><div class="tags">${th.map(([g, c]) => `<button class="${tagClass(g)}" data-act="ask" data-q="${esc(g)}">${esc(g)} ×${c}</button>`).join('')}</div></section>`);
 
   const humorOf = k => { const v = S.entries.filter(e => e.type === 'dia' && e.date === k && e.score && e.score.humor).map(e => e.score.humor); return v.length ? avg(v) : null; };
@@ -391,7 +466,7 @@ function openSheet(html, mount) {
   card.scrollTop = 0;
   if (mount) mount(card);
 }
-function hideSheet() { $('#sheet').hidden = true; $('#sheetCard').innerHTML = ''; document.body.classList.remove('lock'); }
+function hideSheet() { stopTimer(); $('#sheet').hidden = true; $('#sheetCard').innerHTML = ''; document.body.classList.remove('lock'); }
 function closeSheet() {
   if ($('#sheet').hidden) return;
   if (history.state && history.state.sheet) history.back(); else hideSheet();
@@ -410,6 +485,7 @@ function sheetQuick() {
   <div class="quick">
     <button class="qk m" data-act="new-entry" data-type="sonho">${ICON.moon}<b>Sonho</b><span>logo ao acordar</span></button>
     <button class="qk c" data-act="new-entry" data-type="dia">${ICON.pen}<b>Dia a dia</b><span>o que aconteceu</span></button>
+    <button class="qk v wide" data-act="new-entry" data-type="pratica">${ICON.magic}<b>Diário mágico</b><span>meditação, oração, ritual: o que pensou e como foi</span></button>
     <button class="qk m" data-act="manage" data-cat="sp">${ICON.star}<b>Hábito espiritual</b><span>novo ou editar</span></button>
     <button class="qk c" data-act="manage" data-cat="st">${ICON.study}<b>Hábito de estudo</b><span>novo ou editar</span></button>
     <button class="qk y wide" data-act="new-book">${ICON.book}<b>Livro</b><span>PDF, EPUB ou só o título</span></button>
@@ -463,9 +539,115 @@ function dictate(btn, ta) {
 }
 const range = (id, label, v) => `<label class="rng">${label} <output id="${id}o">${v}/10</output><input type="range" id="${id}" min="1" max="10" value="${v}"></label>`;
 
+/* ---------- diário mágico (práticas) ---------- */
+let timer = null; // { start, iv, lock }
+function stopTimer() {
+  if (!timer) return 0;
+  clearInterval(timer.iv);
+  if (timer.lock) timer.lock.release().catch(() => {});
+  const min = Math.max(1, Math.round((Date.now() - timer.start) / 60000));
+  timer = null;
+  return min;
+}
+function toggleTimer(btn) {
+  const lbl = btn.querySelector('span');
+  if (timer) {
+    const min = stopTimer();
+    $('#pDur').value = min;
+    btn.classList.remove('on'); lbl.textContent = 'CRONÔMETRO';
+    toast(`${min} min registrados`);
+    return;
+  }
+  timer = { start: Date.now() };
+  btn.classList.add('on');
+  const tick = () => { const s = Math.floor((Date.now() - timer.start) / 1000); lbl.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)} · PARAR`; };
+  tick(); timer.iv = setInterval(tick, 1000);
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').then(l => { if (timer) timer.lock = l; else l.release(); }).catch(() => {});
+}
+function guessHabit(practice) {
+  const p = norm(practice).slice(0, 5);
+  if (!p) return '';
+  const h = S.habits.find(x => norm(x.name).includes(p));
+  return h ? h.id : '';
+}
+
+function sheetPractice(e, dateK) {
+  const now = new Date(), sc = (e && e.score) || {};
+  const d = {
+    date: e ? e.date : (dateK || todayKey()), time: e ? e.time : `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    practice: e ? (e.practice || '') : 'Meditação', duration: e ? (e.duration || '') : '',
+    title: e ? e.title : '', intent: e ? (e.intent || '') : '', text: e ? e.text : '', result: e ? (e.result || '') : '',
+    tags: e ? e.tags.join(', ') : '',
+  };
+  const known = tagCounts('pratica').slice(0, 10).map(([t]) => t);
+  const habitId = e ? '' : guessHabit(d.practice);
+  const mic = id => SR ? `<button type="button" class="mic" data-mic="${id}">${ICON.mic}<span>DITAR</span></button>` : '';
+  openSheet(`<h2 class="sh-title">${e ? 'Editar prática' : 'Diário mágico'}</h2>
+  <form id="fPrac" class="form">
+    <label>Prática<input id="pType" value="${esc(d.practice)}" list="pList" required placeholder="Meditação"></label>
+    <datalist id="pList">${practiceList().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+    <div class="tags pick" id="pChips">${practiceList().map(p => `<button type="button" data-prac="${esc(p)}" class="${norm(p) === norm(d.practice) ? 'sel' : ''}">${esc(p)}</button>`).join('')}</div>
+    <div class="two"><label>Data<input type="date" id="eDate" value="${d.date}" required></label><label>Hora<input type="time" id="eTime" value="${esc(d.time)}"></label></div>
+    <div class="two dur"><label>Duração (min)<input type="number" id="pDur" min="0" inputmode="numeric" value="${d.duration}"></label>
+      <button type="button" class="btn ghost timer ${timer ? 'on' : ''}" id="pTimer">${ICON.timer}<span>CRONÔMETRO</span></button></div>
+    <label>Intenção <small>o que você buscava com a prática</small><input id="pIntent" value="${esc(d.intent)}" placeholder="Acalmar a mente antes da reunião"></label>
+    <label class="ta">O que pensei e senti no momento<textarea id="pText" rows="6" placeholder="Pensamentos que vieram, imagens, sensações no corpo, distrações…">${esc(d.text)}</textarea>${mic('pText')}</label>
+    <label class="ta">Como foi<textarea id="pResult" rows="4" placeholder="Fácil ou difícil? O que mudou depois? Algum insight?">${esc(d.result)}</textarea>${mic('pResult')}</label>
+    <label>Título <small>opcional</small><input id="eTitle" value="${esc(d.title)}" placeholder="Silêncio depois da chuva"></label>
+    <label>Marcadores <small>separados por vírgula</small><input id="eTags" value="${esc(d.tags)}" placeholder="silêncio, luz, ansiedade" autocapitalize="none"></label>
+    ${known.length ? `<div class="tags pick" id="tagPick">${known.map(t => `<button type="button" data-tag="${esc(t)}">+ ${esc(t)}</button>`).join('')}</div>` : ''}
+    ${range('pDeep', 'Profundidade', sc.profundidade || 6)}
+    ${range('pPaz', 'Paz depois', sc.paz || 6)}
+    ${!e && S.habits.length ? `<label>Marcar hábito como feito<select id="pHabit"><option value="">Nenhum</option>${S.habits.map(h => `<option value="${h.id}" ${h.id === habitId ? 'selected' : ''}>${esc(h.name)}</option>`).join('')}</select></label>` : ''}
+    <div class="actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn" type="submit">Salvar</button></div>
+  </form>`, c => {
+    c.querySelectorAll('input[type=range]').forEach(r => r.addEventListener('input', () => { $('#' + r.id + 'o').textContent = r.value + '/10'; }));
+    c.querySelectorAll('[data-prac]').forEach(b => b.addEventListener('click', () => {
+      $('#pType').value = b.dataset.prac;
+      c.querySelectorAll('[data-prac]').forEach(x => x.classList.toggle('sel', x === b));
+      const hs = $('#pHabit'); if (hs) hs.value = guessHabit(b.dataset.prac);
+    }));
+    $('#pType', c).addEventListener('change', () => { const hs = $('#pHabit'); if (hs) hs.value = guessHabit($('#pType').value); });
+    c.querySelectorAll('[data-tag]').forEach(b => b.addEventListener('click', () => {
+      const inp = $('#eTags'), list = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+      if (!list.includes(b.dataset.tag)) list.push(b.dataset.tag);
+      inp.value = list.join(', ');
+    }));
+    c.querySelectorAll('[data-mic]').forEach(b => b.addEventListener('click', () => dictate(b, $('#' + b.dataset.mic))));
+    $('#pTimer', c).addEventListener('click', ev => toggleTimer(ev.currentTarget));
+    $('#fPrac', c).addEventListener('submit', ev => {
+      ev.preventDefault();
+      c.querySelectorAll('[data-mic]').forEach(b => { if (b._rec) b._rec.stop(); });
+      if (timer) $('#pDur').value = stopTimer();
+      const practice = $('#pType').value.trim() || 'Prática';
+      const data = {
+        type: 'pratica', practice, date: $('#eDate').value || todayKey(), time: $('#eTime').value,
+        duration: parseInt($('#pDur').value, 10) || 0,
+        title: $('#eTitle').value.trim(), intent: $('#pIntent').value.trim(),
+        text: $('#pText').value.trim(), result: $('#pResult').value.trim(),
+        tags: [...new Set($('#eTags').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))],
+        score: { profundidade: +$('#pDeep').value, paz: +$('#pPaz').value },
+        updated: Date.now(),
+      };
+      let saved;
+      if (e) { Object.assign(e, data); saved = e; }
+      else { saved = { id: uid(), created: Date.now(), ...data }; S.entries.push(saved); }
+      const hs = $('#pHabit');
+      if (hs && hs.value) {
+        const a = S.log[data.date] || (S.log[data.date] = []);
+        if (!a.includes(hs.value)) a.push(hs.value);
+      }
+      save(); render();
+      toast(hs && hs.value ? 'Prática salva e hábito marcado' : 'Prática salva no diário mágico');
+      sheetDetail(saved.id);
+    });
+  });
+}
+
 function sheetEntry(type, id, dateK) {
   const e = id ? S.entries.find(x => x.id === id) : null;
   if (e) type = e.type;
+  if (type === 'pratica') { sheetPractice(e, dateK); return; }
   const now = new Date(), isS = type === 'sonho', sc = (e && e.score) || {};
   const d = {
     date: e ? e.date : (dateK || todayKey()), time: e ? e.time : `${pad(now.getHours())}:${pad(now.getMinutes())}`,
@@ -516,9 +698,15 @@ function sheetDetail(id) {
   const e = S.entries.find(x => x.id === id);
   if (!e) { closeSheet(); return; }
   const rel = related(e);
-  openSheet(`<div class="when"><span>${fmtLong(e.date)}${e.time ? ' · ' + e.time : ''}</span><b>◆ ${e.type === 'sonho' ? (e.lucid ? 'SONHO LÚCIDO' : 'SONHO') : 'DIA A DIA'}</b></div>
-  <h2 class="sh-title">${esc(e.title || 'Sem título')}</h2>
-  ${e.text ? `<div class="fulltext">${esc(e.text).replace(/\n/g, '<br>')}</div>` : ''}
+  const para = t => esc(t).replace(/\n/g, '<br>');
+  const body = e.type === 'pratica'
+    ? `${e.intent ? `<div class="intent">INTENÇÃO › ${esc(e.intent)}</div>` : ''}
+       ${e.text ? `<section class="block"><h3>NO MOMENTO</h3><div class="fulltext">${para(e.text)}</div></section>` : ''}
+       ${e.result ? `<section class="block"><h3>COMO FOI</h3><div class="fulltext">${para(e.result)}</div></section>` : ''}`
+    : (e.text ? `<div class="fulltext">${para(e.text)}</div>` : '');
+  openSheet(`<div class="when"><span>${fmtLong(e.date)}${e.time ? ' · ' + e.time : ''}</span><b>◆ ${e.type === 'dia' ? 'DIA A DIA' : badgeOf(e)}</b></div>
+  <h2 class="sh-title">${esc(e.title || (e.type === 'pratica' ? e.practice || 'Prática' : 'Sem título'))}</h2>
+  ${body}
   ${tagsHtml(e.tags, true)}
   ${metersHtml(e)}
   <section class="conn"><h3>CONEXÕES DA MEMÓRIA</h3>${rel.length ? linksHtml(rel) : '<p class="muted">Ainda sem conexões. Elas aparecem quando outros registros compartilham marcadores, palavras ou a véspera do sonho.</p>'}</section>
@@ -618,7 +806,7 @@ function sheetSettings() {
     <div class="actions"><button class="btn ghost" data-act="export">Exportar backup</button><label class="btn ghost">Importar backup<input type="file" id="sImport" accept="application/json,.json" hidden></label></div>
   </section>
   <section class="conn" style="--c:var(--magenta)"><h3>ZONA DE PERIGO</h3><button class="btn ghost danger" data-act="wipe">Apagar todos os dados</button></section>
-  <p class="muted tiny">Chronos 84 · versão 1.0</p>`, c => {
+  <p class="muted tiny">Chronos 84 · versão 1.1</p>`, c => {
     $('#fSet', c).addEventListener('submit', e => {
       e.preventDefault();
       S.name = $('#sName').value.trim();

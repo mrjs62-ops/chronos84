@@ -265,6 +265,26 @@ label.btn{font-family:var(--f-display);font-size:12px;letter-spacing:.12em;color
 .qk.m{--c:var(--magenta)} .qk.c{--c:var(--cyan)} .qk.y{--c:var(--sun)} .qk.v{--c:var(--violet)}
 .qk.wide{grid-column:1/-1}
 
+/* ---------- diário mágico ---------- */
+.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg button.mg.on{background:linear-gradient(90deg,#9d4dff44,#05d9e822);box-shadow:inset 0 -2px 0 var(--violet)}
+.prompt.v{--c:var(--violet)}
+.rec.v{--c:var(--violet)}
+.entry.pr{border-left:2px solid var(--violet);background:linear-gradient(100deg,#9d4dff14,var(--card) 40%)}
+.entry.pr .when b{color:var(--violet);text-shadow:0 0 8px #9d4dff88}
+.intent{font-family:var(--f-data);font-size:17px;color:var(--cyan);letter-spacing:.04em;line-height:1.25}
+.block{display:grid;gap:4px}
+.block h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:11px;letter-spacing:.16em;color:var(--violet)}
+.link.pr{border-left-color:var(--cyan);background:#05d9e810}
+.stats.three{grid-template-columns:repeat(3,1fr)}
+.tags.pick button.sel{color:var(--void);background:var(--violet);border-color:var(--violet);box-shadow:0 0 8px var(--violet)}
+.two.dur{align-items:end}
+.btn.timer{font-family:var(--f-data);font-size:17px;letter-spacing:.06em;padding:10px 8px;border-color:var(--violet);color:var(--violet)}
+.btn.timer svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
+.btn.timer.on{background:var(--violet);color:var(--void);box-shadow:0 0 14px var(--violet)}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--cyan) 50%),linear-gradient(135deg,var(--cyan) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;
   background:var(--deep);border:1px solid var(--cyan);color:var(--cyan);padding:8px 14px;font-family:var(--f-data);font-size:18px;letter-spacing:.05em;box-shadow:0 0 16px #05d9e855;max-width:90vw;text-align:center}
 
