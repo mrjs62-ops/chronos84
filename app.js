@@ -493,7 +493,7 @@ function vLivros() {
 /* ================= render ================= */
 function render() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === cur.tab));
-  $('#view').innerHTML = ({ hoje: vHoje, diario: vDiario, memoria: vMemoria, livros: vLivros })[cur.tab]();
+  $('#view').innerHTML = ({ hoje: vHoje, diario: vDiario, memoria: vMemoria, livros: vLivros, redes: () => vRedes() })[cur.tab]();
   if (cur.tab === 'hoje') mountSwiper();
 }
 
@@ -507,7 +507,7 @@ function openSheet(html, mount) {
   card.scrollTop = 0;
   if (mount) mount(card);
 }
-function hideSheet() { stopTimer(); $('#sheet').hidden = true; $('#sheetCard').innerHTML = ''; document.body.classList.remove('lock'); }
+function hideSheet() { stopTimer(); if (typeof netStop === 'function') netStop(); $('#sheet').hidden = true; $('#sheetCard').innerHTML = ''; document.body.classList.remove('lock'); }
 function closeSheet() {
   if ($('#sheet').hidden) return;
   if (history.state && history.state.sheet) history.back(); else hideSheet();
@@ -530,6 +530,7 @@ function sheetQuick() {
     <button class="qk m" data-act="manage" data-cat="sp">${ICON.star}<b>Hábito espiritual</b><span>novo ou editar</span></button>
     <button class="qk c" data-act="manage" data-cat="st">${ICON.study}<b>Hábito de estudo</b><span>novo ou editar</span></button>
     <button class="qk y wide" data-act="new-book">${ICON.book}<b>Livro</b><span>PDF, EPUB ou só o título</span></button>
+    <button class="qk c wide" data-act="net-go">${ICON.mic}<b>Treino de redes</b><span>CCNA por voz: pergunta, você responde falando</span></button>
   </div>`);
 }
 
@@ -847,7 +848,7 @@ function sheetSettings() {
     <div class="actions"><button class="btn ghost" data-act="export">Exportar backup</button><label class="btn ghost">Importar backup<input type="file" id="sImport" accept="application/json,.json" hidden></label></div>
   </section>
   <section class="conn" style="--c:var(--magenta)"><h3>ZONA DE PERIGO</h3><button class="btn ghost danger" data-act="wipe">Apagar todos os dados</button></section>
-  <p class="muted tiny">Chronos 84 · versão 1.1</p>`, c => {
+  <p class="muted tiny">Chronos 84 · versão 1.2</p>`, c => {
     $('#fSet', c).addEventListener('submit', e => {
       e.preventDefault();
       S.name = $('#sName').value.trim();

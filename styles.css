@@ -63,10 +63,10 @@ button{font:inherit;color:inherit}
 
 /* ---------- tab bar ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:520px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(5,1fr);align-items:end;
+  display:grid;grid-template-columns:repeat(6,1fr);align-items:end;
   padding:8px max(10px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));
   border-top:1px solid var(--line);background:linear-gradient(180deg,#120a28f2,#0b0618)}
-.tab{background:none;border:0;display:grid;justify-items:center;gap:2px;font-family:var(--f-data);font-size:15px;letter-spacing:.06em;color:var(--ink-mute);text-transform:uppercase;cursor:pointer;padding:2px 0}
+.tab{background:none;border:0;display:grid;justify-items:center;gap:2px;font-family:var(--f-data);font-size:14px;letter-spacing:.03em;color:var(--ink-mute);text-transform:uppercase;cursor:pointer;padding:2px 0}
 .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
 .tab.on{color:var(--cyan);text-shadow:0 0 8px var(--cyan)}
 .tab.on svg{filter:drop-shadow(0 0 4px var(--cyan))}
@@ -310,3 +310,63 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   background:var(--deep);border:1px solid var(--cyan);color:var(--cyan);padding:8px 14px;font-family:var(--f-data);font-size:18px;letter-spacing:.05em;box-shadow:0 0 16px #05d9e855;max-width:90vw;text-align:center}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ---------- REDES (CCNA) ---------- */
+.netgo{width:100%;padding:16px;font-size:13px}
+.btn svg,.netgo svg,.plus svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px}
+.netcfg{display:grid;gap:8px}
+.tgl{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);padding:10px 12px;text-align:left;cursor:pointer;width:100%}
+.tgl i{width:38px;height:20px;border:1px solid var(--ink-mute);position:relative;flex:none}
+.tgl i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--ink-mute);transition:left .15s}
+.tgl.on i{border-color:var(--cyan);box-shadow:0 0 8px #05d9e855}
+.tgl.on i::after{left:20px;background:var(--cyan)}
+.tgl span{display:grid;line-height:1.25}
+.tgl small{color:var(--ink-dim);font-size:13px}
+.netrate button{font-size:11px}
+.netmod{border:1px solid var(--line);border-left:3px solid var(--c);background:var(--card);padding:10px 12px;display:grid;gap:8px}
+.nm-h{display:flex;gap:10px;align-items:center}
+.nm-n{font-family:var(--f-data);font-size:26px;color:var(--c);line-height:1;text-shadow:0 0 8px var(--c)}
+.nm-t{display:grid;min-width:0;line-height:1.25}
+.nm-t b{font-weight:600}
+.nm-t small{font-family:var(--f-data);font-size:15px;color:var(--ink-dim);letter-spacing:.03em}
+.netmod .prog{margin-top:0;height:5px}
+.nm-a{display:flex;gap:8px}
+.nm-a .plus{flex:1;padding:6px 0;border-color:var(--c);color:var(--c)}
+.aula{display:grid;gap:10px}
+.ab{border-left:2px solid var(--line);padding:4px 0 4px 12px;cursor:pointer;transition:border-color .2s,background .2s}
+.ab h4{margin:0 0 2px;font-family:var(--f-display);font-weight:400;font-size:13px;letter-spacing:.08em;color:var(--c)}
+.ab p{margin:0;font-size:15px;line-height:1.6;color:#ddd2f7}
+.ab.reading{border-color:var(--c);background:#ffffff08;box-shadow:inset 3px 0 10px -6px var(--c)}
+code{font-family:var(--f-data);font-size:1.15em;color:var(--sun);background:#ffd31912;padding:0 4px;overflow-wrap:anywhere}
+.qz{display:grid;gap:12px}
+.qz-top{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-data);font-size:16px;color:var(--c);letter-spacing:.05em;text-transform:uppercase}
+.qz-q{margin:0;font-size:18px;line-height:1.45;font-weight:500;text-wrap:pretty}
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;text-align:left;background:var(--deep);border:1px solid var(--line);padding:10px;cursor:pointer;width:100%}
+.opt b{font-family:var(--f-display);font-weight:400;font-size:14px;color:var(--c);border:1px solid var(--c);display:grid;place-items:center;height:28px}
+.opt.ok{border-color:#39ff9e;background:#39ff9e14}
+.opt.ok b{color:#39ff9e;border-color:#39ff9e}
+.opt.bad{border-color:var(--magenta);background:#ff2a6d14}
+.opt.bad b{color:var(--magenta);border-color:var(--magenta)}
+.opt.dim{opacity:.45}
+.opt:disabled{cursor:default;color:var(--ink)}
+.heard{font-family:var(--f-data);font-size:18px;color:var(--ink-dim);min-height:24px;line-height:1.25}
+.heard em{font-style:normal;color:var(--cyan)}
+.netans{display:grid;grid-template-columns:1fr auto;gap:8px}
+.fb{border:1px solid var(--fc);background:var(--deep);padding:12px;display:grid;gap:6px;--fc:#39ff9e}
+.fb.bad{--fc:var(--magenta)}
+.fb > b{font-family:var(--f-display);font-weight:400;font-size:13px;letter-spacing:.12em;color:var(--fc);text-shadow:0 0 8px var(--fc)}
+.fb p{margin:0;font-size:15px;line-height:1.5}
+.fb em{font-style:normal;color:var(--sun)}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink-dim);text-decoration:underline;font-size:13px;cursor:pointer;justify-self:start}
+.qctl{display:flex;justify-content:center;align-items:center;gap:28px;padding:4px 0}
+.qctl .icon-btn{width:46px;height:46px;font-size:24px}
+.bigmic{width:78px;height:78px;border-radius:50%;border:2px solid var(--magenta);background:radial-gradient(circle,#ff2a6d33,transparent 70%);display:grid;place-items:center;cursor:pointer;color:var(--magenta)}
+.bigmic svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.8}
+.bigmic.on{background:var(--magenta);color:var(--void);box-shadow:0 0 0 0 #ff2a6daa;animation:ping 1.2s ease-out infinite}
+.bigmic:disabled{opacity:.3;cursor:default}
+@keyframes ping{to{box-shadow:0 0 0 18px #ff2a6d00}}
+.miss{border-left:2px solid var(--magenta);padding:4px 0 4px 10px;display:grid;gap:2px}
+.miss p{margin:0;font-size:14px;color:var(--ink-dim)}
+.miss em{font-style:normal;color:var(--sun);font-size:14px}
+@media (prefers-reduced-motion:reduce){.bigmic.on{animation:none}}
